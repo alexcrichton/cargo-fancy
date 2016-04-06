@@ -2,6 +2,7 @@ extern crate term;
 
 use std::collections::HashMap;
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -65,7 +66,11 @@ fn rustc(addr: &str, me: &Path) {
     let mut cnt = [0xff; 5];
     assert_eq!(s.read(&mut cnt[1..]).unwrap(), 4);
 
-    let mut child = Command::new("rustc")
+    let mut rustc = env::var_os("__RUSTC_PREVIOUS").unwrap_or(OsString::new());
+    if &*rustc == "" {
+        rustc = OsString::from("rustc");
+    }
+    let mut child = Command::new(rustc)
                             .arg("--color=always")
                             .arg("-Ztime-passes")
                             .args(&args)
@@ -191,6 +196,8 @@ fn build() {
                             .arg("--color=always")
                             .env("__CARGO_FANCY", addr.to_string())
                             .env("RUSTC", env::current_exe().unwrap())
+                            .env("__RUSTC_PREVIOUS",
+                                 env::var_os("RUSTC").unwrap_or(OsString::new()))
                             .args(&args[1..])
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped())
