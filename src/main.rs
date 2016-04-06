@@ -2,7 +2,7 @@ extern crate term;
 
 use std::collections::HashMap;
 use std::env;
-use std::fs::{self, File};
+use std::fs;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::io;
@@ -288,7 +288,6 @@ impl Term {
         let mut stdout_done = false;
         let mut stderr_done = false;
         let mut to_remove = Vec::new();
-        let mut out = File::create("out").unwrap();
         loop {
             for _ in 0..self.lines.len() {
                 self.stdout.cursor_up().unwrap();
@@ -333,7 +332,7 @@ impl Term {
                         dst.write_all(b"\r").unwrap();
                         dst.write_all(&msg).unwrap();
                     } else {
-                        out.write_all(&msg).unwrap();
+                        // out.write_all(&msg).unwrap();
                     }
                 }
             }
