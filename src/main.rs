@@ -292,8 +292,13 @@ impl Term {
             for _ in 0..self.lines.len() {
                 self.stdout.cursor_up().unwrap();
             }
+            self.stdout.flush().unwrap();
 
             for (msg, stdout) in inner.messages.drain(..) {
+                if msg.len() > 0 {
+                    assert_eq!(msg.iter().position(|b| *b == b'\n'),
+                               Some(msg.len() - 1));
+                }
                 let dst = if stdout {
                     &mut self.stdout as &mut io::Write
                 } else {
@@ -314,6 +319,10 @@ impl Term {
                     let idx = match self.on_screen.get(&a) {
                         Some(i) => *i,
                         None => {
+                            if msg.starts_with(b"time:") ||
+                               msg.starts_with(b"  time:") {
+                                continue
+                            }
                             dst.write_all(b"\r").unwrap();
                             dst.write_all(&CLEAR).unwrap();
                             dst.write_all(b"\r").unwrap();
@@ -370,6 +379,7 @@ impl Term {
             for (a, idx) in to_remove.drain(..) {
                 self.on_screen.remove(&a);
                 self.lines[idx].running = false;
+                self.lines[idx].step = self.lines[idx].total;
             }
 
             if self.tick != inner.tick {
