@@ -35,6 +35,7 @@ fn build_script(addr: &str, me: &Path) {
     s.write_all(&[1]).unwrap();
 
     let mut child = Command::new(me.with_file_name("build-script-build2"))
+                            .env("RUSTC", env::var_os("__RUSTC_PREVIOUS").unwrap())
                             .spawn()
                             .unwrap();
     std::process::exit(child.wait().ok().and_then(|s| s.code()).unwrap_or(1));
@@ -66,10 +67,7 @@ fn rustc(addr: &str, me: &Path) {
     let mut cnt = [0xff; 5];
     assert_eq!(s.read(&mut cnt[1..]).unwrap(), 4);
 
-    let mut rustc = env::var_os("__RUSTC_PREVIOUS").unwrap_or(OsString::new());
-    if &*rustc == "" {
-        rustc = OsString::from("rustc");
-    }
+    let rustc = env::var_os("__RUSTC_PREVIOUS").unwrap();
     let mut child = Command::new(rustc)
                             .arg("--color=always")
                             .arg("-Ztime-passes")
@@ -197,7 +195,8 @@ fn build() {
                             .env("__CARGO_FANCY", addr.to_string())
                             .env("RUSTC", env::current_exe().unwrap())
                             .env("__RUSTC_PREVIOUS",
-                                 env::var_os("RUSTC").unwrap_or(OsString::new()))
+                                 env::var_os("RUSTC")
+                                     .unwrap_or(OsString::from("rustc")))
                             .args(&args[1..])
                             .stdout(Stdio::piped())
                             .stderr(Stdio::piped())
