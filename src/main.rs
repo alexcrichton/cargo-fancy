@@ -3,6 +3,7 @@ extern crate term;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
+use std::fs::File;
 use std::fs;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -33,6 +34,18 @@ fn main() {
 fn build_script(addr: &str, me: &Path) {
     let mut s = TcpStream::connect(addr).unwrap();
     s.write_all(&[1]).unwrap();
+    let script = env::current_dir().unwrap().join("Cargo.toml");
+    if script.exists() {
+        let mut toml = String::new();
+        File::open(script).unwrap().read_to_string(&mut toml).unwrap();
+        let name = toml.find("name = \"")
+                       .map(|i| &toml[i + 8..])
+                       .and_then(|s| s.find("\"").map(|i| &s[..i]))
+                       .unwrap_or("dummy");
+        s.write_all(name.as_bytes()).unwrap();
+    } else {
+        s.write_all(b"dummy").unwrap();
+    }
 
     let mut child = Command::new(me.with_file_name("build-script-build2"))
                             .env("RUSTC", env::var_os("__RUSTC_PREVIOUS").unwrap())
@@ -168,7 +181,9 @@ fn build() {
                 ]).unwrap();
                 str::from_utf8(&name[..n]).unwrap().to_string()
             } else if id == [1] {
-                format!("build script")
+                let mut name = [0; 128];
+                let n = s.read(&mut name).unwrap();
+                format!("{} script", str::from_utf8(&name[..n]).unwrap())
             } else {
                 panic!("wut");
             };
@@ -301,10 +316,7 @@ impl Term {
             self.stdout.flush().unwrap();
 
             for (msg, stdout) in inner.messages.drain(..) {
-                if msg.len() > 0 {
-                    assert_eq!(msg.iter().position(|b| *b == b'\n'),
-                               Some(msg.len() - 1));
-                }
+                self.stdout.flush().unwrap();
                 let dst = if stdout {
                     &mut self.stdout as &mut io::Write
                 } else {
@@ -351,6 +363,7 @@ impl Term {
                     }
                 }
             }
+            self.stdout.flush().unwrap();
 
             for (a, v) in inner.active.iter() {
                 if self.on_screen.contains_key(a) {
@@ -399,9 +412,11 @@ impl Term {
                 break
             }
 
+            self.stdout.flush().unwrap();
             for line in self.lines.iter_mut() {
                 line.render(self.width, &mut *self.stdout);
                 writeln!(self.stdout, "").unwrap();
+                self.stdout.flush().unwrap();
             }
 
             self.stdout.flush().unwrap();
@@ -453,7 +468,7 @@ impl Line {
 
         let remaining = width - (3 + 2 + namelen + 3);
 
-        if self.name.contains("build script") {
+        if self.name.contains(" script") {
             if self.running {
                 for i in 0..remaining-2 {
                     if i == self.tick % (remaining - 2) {
