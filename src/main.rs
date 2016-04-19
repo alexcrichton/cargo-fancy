@@ -19,6 +19,10 @@ const WIDTH: usize = 80;
 const CLEAR: [u8; WIDTH] = [b' '; WIDTH];
 
 fn main() {
+    if cfg!(windows) {
+        println!("Unfortunately this doesn't work on Windows just yet :(");
+        std::process::exit(1);
+    }
     if let Ok(s) = env::var("__CARGO_FANCY") {
         let me = env::current_exe().unwrap();
         if me.file_name().and_then(|s| s.to_str()) == Some("build-script-build") {
@@ -434,6 +438,7 @@ fn emit(out: &mut io::Write, msg: &[u8]) {
     } else {
         out.write_all(msg).unwrap();
     }
+    // Clear all text from the cursor to the end of the terminal
     out.write_all(b"\x1b[K\n").unwrap();
 }
 
