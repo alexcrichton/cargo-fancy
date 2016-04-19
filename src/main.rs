@@ -337,14 +337,7 @@ impl Term {
                     let idx = match self.on_screen.get(&a) {
                         Some(i) => *i,
                         None => {
-                            if msg.starts_with(b"time:") ||
-                               msg.starts_with(b"  time:") {
-                                continue
-                            }
-                            dst.write_all(b"\r").unwrap();
-                            dst.write_all(&CLEAR).unwrap();
-                            dst.write_all(b"\r").unwrap();
-                            dst.write_all(&msg).unwrap();
+                            emit(dst, msg);
                             continue
                         }
                     };
@@ -355,9 +348,7 @@ impl Term {
                         do_print = false;
                     }
                     if do_print {
-                        dst.write_all(&CLEAR).unwrap();
-                        dst.write_all(b"\r").unwrap();
-                        dst.write_all(&msg).unwrap();
+                        emit(dst, &msg)
                     } else {
                         // out.write_all(&msg).unwrap();
                     }
@@ -431,15 +422,27 @@ impl Term {
     }
 }
 
+fn emit(out: &mut io::Write, msg: &[u8]) {
+    if msg.starts_with(b"  time:") || msg.starts_with(b"time: ") {
+        return
+    }
+    out.write_all(b"\r").unwrap();
+    out.write_all(&CLEAR).unwrap();
+    out.write_all(b"\r").unwrap();
+    if msg.ends_with(b"\n") {
+        out.write_all(&msg[..msg.len() - 1]).unwrap();
+    } else {
+        out.write_all(msg).unwrap();
+    }
+    out.write_all(b"\x1b[K\n").unwrap();
+}
+
 impl Line {
     fn input(&mut self, msg: &[u8], out: &mut io::Write) {
         if msg.starts_with(b"time:") {
             self.step += 1;
-        } else if !msg.starts_with(b"  time:") {
-            out.write_all(b"\r").unwrap();
-            out.write_all(&CLEAR).unwrap();
-            out.write_all(b"\r").unwrap();
-            out.write_all(msg).unwrap();
+        } else {
+            emit(out, msg);
         }
     }
 
